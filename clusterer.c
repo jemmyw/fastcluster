@@ -208,6 +208,8 @@ static VALUE getClusters(VALUE self) {
     VALUE cluster_obj = rb_class_new_instance(arg_count, arg_array, cluster_class);
     rb_ary_push(ruby_cluster_array, cluster_obj);
   }
+  
+  free(preclusters);
 
   return ruby_cluster_array;
 }
