@@ -101,22 +101,12 @@ static void nativePointArray(CLUSTER * arrayPtr, VALUE rubyArray, long num_point
   }
 }
 
-static VALUE getClusters(VALUE self) {
-  long separation = NUM2INT(rb_iv_get(self, "@separation"));
-  long resolution = NUM2INT(rb_iv_get(self, "@resolution"));
-
-  VALUE pointArray = getPoints(self);
-  long num_points = RARRAY(pointArray)->len;
-  CLUSTER point_array[num_points];
-
-  nativePointArray(&point_array[0], pointArray, num_points);
-
+static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * point_array, int num_points, long * cluster_size) {
   int max_grid = getMaxGrid(resolution, &point_array[0], num_points);
   int i, j;
-  void *_tmp;
 
   CLUSTER * cluster;
-  
+
   CLUSTER grid_array[max_grid][max_grid];
   long preclust_size = 0;
 
@@ -138,7 +128,7 @@ static VALUE getClusters(VALUE self) {
   }
 
   CLUSTER *preclusters = malloc(preclust_size * sizeof(CLUSTER));
-  
+
   int max_grid_total = max_grid * max_grid;
   CLUSTER * gridPtr = grid_array[0];
 
@@ -191,25 +181,54 @@ static VALUE getClusters(VALUE self) {
     }
   } while(distance_sep <= separation && preclust_size > 1);
 
+  *cluster_size = preclust_size;
+  return preclusters;
+}
+
+static VALUE getClusterClass() {
   ID cluster_module_id = rb_intern("Clusterer");
   ID cluster_class_id = rb_intern("Cluster");
   VALUE cluster_module = rb_const_get(rb_cObject, cluster_module_id);
-  VALUE cluster_class = rb_const_get(cluster_module, cluster_class_id);
-  VALUE ruby_cluster_array = rb_ary_new2(preclust_size);
+  return rb_const_get(cluster_module, cluster_class_id);
+}
 
-  for(i=0;i<preclust_size;i++) {
+static VALUE getClusters(VALUE self) {
+  // Get the separation adn resolution from ruby
+  long separation = NUM2INT(rb_iv_get(self, "@separation"));
+  long resolution = NUM2INT(rb_iv_get(self, "@resolution"));
+  int i;
+
+  // Create a native array of clusters from the ruby array of points
+  VALUE pointArray = getPoints(self);
+  long num_points = RARRAY(pointArray)->len;
+  CLUSTER native_point_array[num_points];
+
+  nativePointArray(&native_point_array[0], pointArray, num_points);
+
+  // Calcualte the clusters
+  CLUSTER * clusters = NULL;
+  long cluster_size;
+
+  clusters = calculateClusters(separation, resolution, &native_point_array[0], num_points, &cluster_size);
+
+  // Create ruby array of clusters to return
+  VALUE cluster_class = getClusterClass();
+  VALUE ruby_cluster_array = rb_ary_new2(cluster_size);
+
+  for(i=0;i<cluster_size;i++) {
     int arg_count = 3;
     VALUE arg_array[arg_count];
 
-    arg_array[0] = rb_float_new(preclusters[i].x);
-    arg_array[1] = rb_float_new(preclusters[i].y);
-    arg_array[2] = INT2FIX(preclusters[i].size);
+    arg_array[0] = rb_float_new(clusters[i].x);
+    arg_array[1] = rb_float_new(clusters[i].y);
+    arg_array[2] = INT2FIX(clusters[i].size);
 
     VALUE cluster_obj = rb_class_new_instance(arg_count, arg_array, cluster_class);
     rb_ary_push(ruby_cluster_array, cluster_obj);
   }
-  
-  free(preclusters);
+
+  // Free the clusters array
+  free(clusters);
 
   return ruby_cluster_array;
 }
