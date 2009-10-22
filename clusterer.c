@@ -127,7 +127,7 @@ static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * po
     if(grid_array[gx][gy].size == 1) preclust_size++;
   }
 
-  CLUSTER *preclusters = malloc(preclust_size * sizeof(CLUSTER));
+  CLUSTER *clusters = malloc(preclust_size * sizeof(CLUSTER));
 
   int max_grid_total = max_grid * max_grid;
   CLUSTER * gridPtr = grid_array[0];
@@ -135,7 +135,7 @@ static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * po
   int incr = 0;
   for(i=0;i<max_grid_total;i++) {
     if(gridPtr[i].size > 0) {
-      preclusters[incr] = gridPtr[i];
+      clusters[incr] = gridPtr[i];
       incr++;
     }
   }
@@ -153,7 +153,7 @@ static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * po
 
     for(i=0;i<preclust_size;i++){
       for(j=i+1;j<preclust_size;j++){
-        double distance = distance_from(&preclusters[i], &preclusters[j]);
+        double distance = distance_from(&clusters[i], &clusters[j]);
 
         if(distance_sep == 0 || distance < distance_sep) {
           distance_sep = distance;
@@ -164,25 +164,25 @@ static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * po
     }
 
     if(nearest_other > 0) {
-      combineClusters(&preclusters[nearest_origin], &preclusters[nearest_other]);
+      combineClusters(&clusters[nearest_origin], &clusters[nearest_other]);
 
       CLUSTER *newarr = malloc(preclust_size * sizeof(CLUSTER));
-      memcpy(&newarr[0], &preclusters[0], nearest_other * sizeof(CLUSTER));
-      memcpy(&newarr[nearest_other], &preclusters[nearest_other+1], (preclust_size - (nearest_other + 1)) * sizeof(CLUSTER));
+      memcpy(&newarr[0], &clusters[0], nearest_other * sizeof(CLUSTER));
+      memcpy(&newarr[nearest_other], &clusters[nearest_other+1], (preclust_size - (nearest_other + 1)) * sizeof(CLUSTER));
 
-      void *_tmp = realloc(preclusters, ((preclust_size-1) * sizeof(CLUSTER)));
-      preclusters = (CLUSTER*)_tmp;
+      void *_tmp = realloc(clusters, ((preclust_size-1) * sizeof(CLUSTER)));
+      clusters = (CLUSTER*)_tmp;
       preclust_size = preclust_size - 1;
 
       for(i=0;i<preclust_size;i++)
-        preclusters[i] = newarr[i];
+        clusters[i] = newarr[i];
 
       free(newarr);
     }
   } while(distance_sep <= separation && preclust_size > 1);
 
   *cluster_size = preclust_size;
-  return preclusters;
+  return clusters;
 }
 
 static VALUE getClusterClass() {
