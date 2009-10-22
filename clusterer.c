@@ -140,16 +140,11 @@ static VALUE getClusters(VALUE self) {
   CLUSTER *preclusters = NULL;
   _tmp = realloc(preclusters, (preclust_size * sizeof(CLUSTER)));
   preclusters = (CLUSTER*)_tmp;
-
-  for(i=0;i<preclust_size;i++) {
-    preclusters[i].x = preclusters[i].y = preclusters[i].size = 0;
-  }
-
+  
   int max_grid_total = max_grid * max_grid;
   CLUSTER * gridPtr = grid_array[0];
 
   int incr = 0;
-
   for(i=0;i<max_grid_total;i++) {
     if(gridPtr[i].size > 0) {
       preclusters[incr] = gridPtr[i];
