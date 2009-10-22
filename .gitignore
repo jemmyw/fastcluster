@@ -1,0 +1,5 @@
+ref
+*.so
+*.o
+.idea
+Makefile
