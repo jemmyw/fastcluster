@@ -151,15 +151,8 @@ static VALUE getClusters(VALUE self) {
   int incr = 0;
 
   for(i=0;i<max_grid_total;i++) {
-    CLUSTER * one = &gridPtr[i];
-
-    if(one->size > 0) {
-      CLUSTER * two = &preclusters[incr];
-
-      two->x = one->x;
-      two->y = one->y;
-      two->size = one->size;
-
+    if(gridPtr[i].size > 0) {
+      preclusters[incr] = gridPtr[i];
       incr++;
     }
   }
