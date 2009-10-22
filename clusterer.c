@@ -101,26 +101,6 @@ static void nativePointArray(CLUSTER * arrayPtr, VALUE rubyArray, long num_point
   }
 }
 
-static void flattenGrid(CLUSTER ** grid, CLUSTER * dst, int max) {
-  int i, j;
-  int incr = 0;
-  for(i = 0; i < max; i++) {
-    for(j = 0; j < max; j++) {
-      CLUSTER * one = &grid[i][j];
-
-      if(one->size > 0) {
-        CLUSTER * two = &dst[incr];
-
-        two->x = one->x;
-        two->y = one->y;
-        two->size = one->size;
-
-        incr++;
-      }
-    }
-  }
-}
-
 static VALUE getClusters(VALUE self) {
   long separation = NUM2INT(rb_iv_get(self, "@separation"));
   long resolution = NUM2INT(rb_iv_get(self, "@resolution"));
@@ -165,20 +145,22 @@ static VALUE getClusters(VALUE self) {
     preclusters[i].x = preclusters[i].y = preclusters[i].size = 0;
   }
 
+  int max_grid_total = max_grid * max_grid;
+  CLUSTER * gridPtr = grid_array[0];
+
   int incr = 0;
-  for(i = 0; i < max_grid; i++) {
-    for(j = 0; j < max_grid; j++) {
-      CLUSTER * one = &grid_array[i][j];
 
-      if(one->size > 0) {
-        CLUSTER * two = &preclusters[incr];
+  for(i=0;i<max_grid_total;i++) {
+    CLUSTER * one = &gridPtr[i];
 
-        two->x = one->x;
-        two->y = one->y;
-        two->size = one->size;
+    if(one->size > 0) {
+      CLUSTER * two = &preclusters[incr];
 
-        incr++;
-      }
+      two->x = one->x;
+      two->y = one->y;
+      two->size = one->size;
+
+      incr++;
     }
   }
 
