@@ -137,9 +137,7 @@ static VALUE getClusters(VALUE self) {
     if(grid_array[gx][gy].size == 1) preclust_size++;
   }
 
-  CLUSTER *preclusters = NULL;
-  _tmp = realloc(preclusters, (preclust_size * sizeof(CLUSTER)));
-  preclusters = (CLUSTER*)_tmp;
+  CLUSTER *preclusters = malloc(preclust_size * sizeof(CLUSTER));
   
   int max_grid_total = max_grid * max_grid;
   CLUSTER * gridPtr = grid_array[0];
