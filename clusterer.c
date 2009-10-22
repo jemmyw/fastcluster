@@ -6,79 +6,60 @@
 typedef struct {
   double x;
   double y;
-} POINT;
-
-typedef struct {
-  double x;
-  double y;
   long size;
 } CLUSTER;
 
-static int num_points = 0;
-static int num_allocated_points = 0;
-static POINT *point_array = NULL;
-
-static int AddToPointsArray (POINT * itemPtr) {
-  if(num_points == num_allocated_points) {
-      if (num_allocated_points == 0)
-        num_allocated_points = 3;
-      else
-        num_allocated_points *= 2;
-      void *_tmp = realloc(point_array, (num_allocated_points * sizeof(POINT)));
-      if (!_tmp) {
-        fprintf(stderr, "ERROR: Couldn't realloc memory!\n");
-        return(-1);
-      }
-      point_array = (POINT*)_tmp;
-    }
-
-    POINT item = *itemPtr;
-
-//    memcpy(&point_array[num_points], &item, sizeof(POINT));
-    point_array[num_points] = item;
-    num_points++;
-    return num_points;
+static VALUE getPoints(VALUE self) {
+  return rb_iv_get(self, "@points");
 }
 
-
+/*
+* Add a point to the array
+*/
 static VALUE addPoint(VALUE self, VALUE x, VALUE y) {
-  double rx = NUM2DBL(x);
-  double ry = NUM2DBL(y);
-
-  POINT temp;
-  temp.x = rx;
-  temp.y = ry;
-
-  AddToPointsArray(&temp);
+  long len = 2;
+  VALUE holdArray = rb_ary_new3(2, x, y);
+  VALUE pointArray = getPoints(self);
+  rb_ary_push(pointArray, holdArray);
 
   return Qnil;
 }
 
+/*
+* Calculate the distance (pythag) between two cluster points
+*/
 static double distance_from(CLUSTER * one, CLUSTER * two) {
   double rr = pow((long)one->x - (long)two->x, 2) + pow((long)one->y - (long)two->y, 2);
   return sqrt(rr);
 }
 
-static int resolution = 5;
-static int separation = 105;
-
+/*
+* Add a point to a cluster. This increments the size and calcualtes the average between
+* the current cluster position and the new point.
+*/
 static void addToCluster(CLUSTER * dst, double x, double y) {
   dst->x = ((dst->x * dst->size) + x) / (dst->size + 1);
   dst->y = ((dst->y * dst->size) + y) / (dst->size + 1);
   dst->size++;
 }
 
+/*
+* Combine two clusters into one with an average center point
+*/
 static void combineClusters(CLUSTER * dst, CLUSTER * src) {
   dst->x = (dst->x*dst->size + src->x*src->size) / (dst->size+src->size);
   dst->y = (dst->y*dst->size + src->y*src->size) / (dst->size+src->size);
   dst->size = dst->size + src->size;
 }
 
-static long getMaxGrid() {
+/*
+* Get the maximum grid size
+*/
+static long getMaxGrid(long resolution, CLUSTER * point_array, long num_points) {
   int i;
   int max_grid = 0;
   for(i = 0; i < num_points; i++) {
-    POINT * point = &point_array[i];
+    CLUSTER * point = &point_array[i];
     int xg = point->x/resolution;
     int yg = point->y/resolution;
     if(xg>max_grid)
@@ -89,13 +70,71 @@ static long getMaxGrid() {
   return max_grid+1;
 }
 
+/*
+* initialize function for clusterer class. This creates the instance variables
+* for separation, resolution and points.
+*/
+static VALUE initializeClusterer(VALUE self, VALUE separation, VALUE resolution) {
+  rb_iv_set(self, "@separation", separation);
+  rb_iv_set(self, "@resolution", resolution);
+
+  VALUE pointArray = rb_ary_new();
+  rb_iv_set(self, "@points", pointArray);
+
+  return Qnil;
+}
+
+/*
+* Turn the ruby array of points (format [[x,y], [x,y]]) into an array of
+* CLUSTER
+*/
+static void nativePointArray(CLUSTER * arrayPtr, VALUE rubyArray, long num_points) {
+  int i;
+  for(i=0;i<num_points;i++) {
+    VALUE holdArray = RARRAY(rubyArray)->ptr[i];
+    double x = NUM2DBL(RARRAY(holdArray)->ptr[0]);
+    double y = NUM2DBL(RARRAY(holdArray)->ptr[1]);
+
+    arrayPtr[i].x = x;
+    arrayPtr[i].y = y;
+    arrayPtr[i].size = 1;
+  }
+}
+
+static void flattenGrid(CLUSTER ** grid, CLUSTER * dst, int max) {
+  int i, j;
+  int incr = 0;
+  for(i = 0; i < max; i++) {
+    for(j = 0; j < max; j++) {
+      CLUSTER * one = &grid[i][j];
+
+      if(one->size > 0) {
+        CLUSTER * two = &dst[incr];
+
+        two->x = one->x;
+        two->y = one->y;
+        two->size = one->size;
+
+        incr++;
+      }
+    }
+  }
+}
 
 static VALUE getClusters(VALUE self) {
-  int max_grid = getMaxGrid();
+  long separation = NUM2INT(rb_iv_get(self, "@separation"));
+  long resolution = NUM2INT(rb_iv_get(self, "@resolution"));
+
+  VALUE pointArray = getPoints(self);
+  long num_points = RARRAY(pointArray)->len;
+  CLUSTER point_array[num_points];
+
+  nativePointArray(&point_array[0], pointArray, num_points);
+
+  int max_grid = getMaxGrid(resolution, &point_array[0], num_points);
   int i, j;
   void *_tmp;
 
-  POINT * point;
   CLUSTER * cluster;
   
   CLUSTER grid_array[max_grid][max_grid];
@@ -103,24 +142,20 @@ static VALUE getClusters(VALUE self) {
 
   for(i=0;i<max_grid;i++) {
     for(j=0;j<max_grid;j++) {
-      grid_array[i][j].x = 0;
-      grid_array[i][j].y = 0;
       grid_array[i][j].size = 0;
     }
   }
 
   for(i = 0; i < num_points; i++) {
-    point = &point_array[i];
+    cluster = &point_array[i];
 
-    int gx = floor(point->x/resolution);
-    int gy = floor(point->y/resolution);
+    int gx = floor(cluster->x/resolution);
+    int gy = floor(cluster->y/resolution);
 
-    addToCluster(&grid_array[gx][gy], point->x, point->y);
+    addToCluster(&grid_array[gx][gy], cluster->x, cluster->y);
 
     if(grid_array[gx][gy].size == 1) preclust_size++;
   }
-
-  printf("Number of preclusters: %d\n", preclust_size);
 
   CLUSTER *preclusters = NULL;
   _tmp = realloc(preclusters, (preclust_size * sizeof(CLUSTER)));
@@ -141,9 +176,6 @@ static VALUE getClusters(VALUE self) {
         two->x = one->x;
         two->y = one->y;
         two->size = one->size;
-        
-        printf("pre: %f, %f, %d\n", one->x, one->y, one->size);
-
 
         incr++;
       }
@@ -192,7 +224,10 @@ static VALUE getClusters(VALUE self) {
     }
   } while(distance_sep <= separation && preclust_size > 1);
 
-  VALUE cluster_class = rb_eval_string("require File.dirname(__FILE__) + '/cluster'; Clusterer::Cluster");
+  ID cluster_module_id = rb_intern("Clusterer");
+  ID cluster_class_id = rb_intern("Cluster");
+  VALUE cluster_module = rb_const_get(rb_cObject, cluster_module_id);
+  VALUE cluster_class = rb_const_get(cluster_module, cluster_class_id);
   VALUE ruby_cluster_array = rb_ary_new2(preclust_size);
 
   for(i=0;i<preclust_size;i++) {
@@ -215,8 +250,12 @@ void Init_clusterer() {
   VALUE clustererClass = rb_define_class_under(clustererModule, "Base", rb_cObject);
 
   int arg_count = 2;
+  rb_define_method(clustererClass, "initialize", initializeClusterer, arg_count);
+
   rb_define_method(clustererClass, "add", addPoint, arg_count);
+  rb_define_method(clustererClass, "<<", addPoint, arg_count);
 
   arg_count = 0;
   rb_define_method(clustererClass, "clusters", getClusters, arg_count);
+  rb_define_method(clustererClass, "points", getPoints, arg_count);
 }
