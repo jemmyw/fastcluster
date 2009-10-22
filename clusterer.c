@@ -176,10 +176,7 @@ static VALUE getClusters(VALUE self) {
     if(nearest_other > 0) {
       combineClusters(&preclusters[nearest_origin], &preclusters[nearest_other]);
 
-      CLUSTER *newarr = NULL;
-      _tmp = realloc(newarr, (preclust_size * sizeof(CLUSTER)));
-      newarr = (CLUSTER*)_tmp;
-
+      CLUSTER *newarr = malloc(preclust_size * sizeof(CLUSTER));
       memcpy(&newarr[0], &preclusters[0], nearest_other * sizeof(CLUSTER));
       memcpy(&newarr[nearest_other], &preclusters[nearest_other+1], (preclust_size - (nearest_other + 1)) * sizeof(CLUSTER));
 
@@ -189,6 +186,8 @@ static VALUE getClusters(VALUE self) {
 
       for(i=0;i<preclust_size;i++)
         preclusters[i] = newarr[i];
+
+      free(newarr);
     }
   } while(distance_sep <= separation && preclust_size > 1);
 
