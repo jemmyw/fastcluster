@@ -3,6 +3,15 @@
 #include <stdlib.h>
 #include <math.h>
 
+/*
+*
+* Algorithm:
+*   all points are initially clusters with size 1
+*   precluster - create a grid of size @resolution and cluster the points in each grid space automatically
+*   loop until no cluster is less that @separation apart
+*     combine two closest clusters, the new cluster has the summed size and the averaged distance (size weighted)
+*     between the clusters.
+**/
 typedef struct {
   double x;
   double y;
