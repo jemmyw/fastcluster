@@ -1,5 +1,6 @@
 CHANGELOG
 Manifest
+README.rdoc
 Rakefile
 ext/clusterer.c
 ext/extconf.rb

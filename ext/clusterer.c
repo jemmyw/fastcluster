@@ -268,7 +268,7 @@ static VALUE fc_get_cluster_class() {
 *
 * Example:
 *   clusterer = Fastcluster::Clusterer.new(3, 0, [[1, 1], [1, 2], [5, 9]])
-*   clusterer.clusters -> (
+*   clusterer.clusters -> [(1.00, 1.50): 2, (5.00, 9.00): 1]
 */
 static VALUE fc_get_clusters(VALUE self) {
   // Get the separation adn resolution from ruby
