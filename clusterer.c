@@ -9,17 +9,17 @@ typedef struct {
   long size;
 } CLUSTER;
 
-static VALUE getPoints(VALUE self) {
+static VALUE fc_get_points(VALUE self) {
   return rb_iv_get(self, "@points");
 }
 
 /*
 * Add a point to the array
 */
-static VALUE addPoint(VALUE self, VALUE x, VALUE y) {
+static VALUE fc_add_point(VALUE self, VALUE x, VALUE y) {
   long len = 2;
   VALUE holdArray = rb_ary_new3(2, x, y);
-  VALUE pointArray = getPoints(self);
+  VALUE pointArray = fc_get_points(self);
   rb_ary_push(pointArray, holdArray);
 
   return Qnil;
@@ -28,7 +28,7 @@ static VALUE addPoint(VALUE self, VALUE x, VALUE y) {
 /*
 * Calculate the distance (pythag) between two cluster points
 */
-static double distance_from(CLUSTER * one, CLUSTER * two) {
+static double fc_get_distance_between(CLUSTER * one, CLUSTER * two) {
   double rr = pow((long)one->x - (long)two->x, 2) + pow((long)one->y - (long)two->y, 2);
   return sqrt(rr);
 }
@@ -37,7 +37,7 @@ static double distance_from(CLUSTER * one, CLUSTER * two) {
 * Add a point to a cluster. This increments the size and calcualtes the average between
 * the current cluster position and the new point.
 */
-static void addToCluster(CLUSTER * dst, double x, double y) {
+static void fc_add_to_cluster(CLUSTER * dst, double x, double y) {
   dst->x = ((dst->x * dst->size) + x) / (dst->size + 1);
   dst->y = ((dst->y * dst->size) + y) / (dst->size + 1);
   dst->size++;
@@ -122,7 +122,7 @@ static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * po
     int gx = floor(cluster->x/resolution);
     int gy = floor(cluster->y/resolution);
 
-    addToCluster(&grid_array[gx][gy], cluster->x, cluster->y);
+    fc_add_to_cluster(&grid_array[gx][gy], cluster->x, cluster->y);
 
     if(grid_array[gx][gy].size == 1) preclust_size++;
   }
@@ -153,7 +153,7 @@ static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * po
 
     for(i=0;i<preclust_size;i++){
       for(j=i+1;j<preclust_size;j++){
-        double distance = distance_from(&clusters[i], &clusters[j]);
+        double distance = fc_get_distance_between(&clusters[i], &clusters[j]);
 
         if(distance_sep == 0 || distance < distance_sep) {
           distance_sep = distance;
@@ -199,7 +199,7 @@ static VALUE getClusters(VALUE self) {
   int i;
 
   // Create a native array of clusters from the ruby array of points
-  VALUE pointArray = getPoints(self);
+  VALUE pointArray = fc_get_points(self);
   long num_points = RARRAY(pointArray)->len;
   CLUSTER native_point_array[num_points];
 
@@ -240,10 +240,10 @@ void Init_clusterer() {
   int arg_count = 2;
   rb_define_method(clustererClass, "initialize", initializeClusterer, arg_count);
 
-  rb_define_method(clustererClass, "add", addPoint, arg_count);
-  rb_define_method(clustererClass, "<<", addPoint, arg_count);
+  rb_define_method(clustererClass, "add", fc_add_point, arg_count);
+  rb_define_method(clustererClass, "<<", fc_add_point, arg_count);
 
   arg_count = 0;
   rb_define_method(clustererClass, "clusters", getClusters, arg_count);
-  rb_define_method(clustererClass, "points", getPoints, arg_count);
+  rb_define_method(clustererClass, "points", fc_get_points, arg_count);
 }

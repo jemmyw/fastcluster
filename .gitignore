@@ -1,5 +1,6 @@
 ref
 *.so
 *.o
+*.bundle
 .idea
 Makefile
