@@ -25,6 +25,12 @@ static VALUE fc_add_point(VALUE self, VALUE x, VALUE y) {
   return Qnil;
 }
 
+static VALUE fc_append_point(VALUE self, VALUE point) {
+  VALUE pointArray = fc_get_points(self);
+  rb_ary_push(pointArray, point);
+  return Qnil;
+}
+
 /*
 * Calculate the distance (pythag) between two cluster points
 */
@@ -46,7 +52,7 @@ static void fc_add_to_cluster(CLUSTER * dst, double x, double y) {
 /*
 * Combine two clusters into one with an average center point
 */
-static void combineClusters(CLUSTER * dst, CLUSTER * src) {
+static void fc_combine_clusters(CLUSTER * dst, CLUSTER * src) {
   dst->x = (dst->x*dst->size + src->x*src->size) / (dst->size+src->size);
   dst->y = (dst->y*dst->size + src->y*src->size) / (dst->size+src->size);
   dst->size = dst->size + src->size;
@@ -55,7 +61,7 @@ static void combineClusters(CLUSTER * dst, CLUSTER * src) {
 /*
 * Get the maximum grid size
 */
-static long getMaxGrid(long resolution, CLUSTER * point_array, long num_points) {
+static long fc_get_max_grid(long resolution, CLUSTER * point_array, long num_points) {
   int i;
   int max_grid = 0;
   for(i = 0; i < num_points; i++) {
@@ -74,7 +80,7 @@ static long getMaxGrid(long resolution, CLUSTER * point_array, long num_points) 
 * initialize function for clusterer class. This creates the instance variables
 * for separation, resolution and points.
 */
-static VALUE initializeClusterer(VALUE self, VALUE separation, VALUE resolution) {
+static VALUE fc_initialize_clusterer(VALUE self, VALUE separation, VALUE resolution) {
   rb_iv_set(self, "@separation", separation);
   rb_iv_set(self, "@resolution", resolution);
 
@@ -88,7 +94,7 @@ static VALUE initializeClusterer(VALUE self, VALUE separation, VALUE resolution)
 * Turn the ruby array of points (format [[x,y], [x,y]]) into an array of
 * CLUSTER
 */
-static void nativePointArray(CLUSTER * arrayPtr, VALUE rubyArray, long num_points) {
+static void fc_native_point_array(CLUSTER * arrayPtr, VALUE rubyArray, long num_points) {
   int i;
   for(i=0;i<num_points;i++) {
     VALUE holdArray = RARRAY(rubyArray)->ptr[i];
@@ -101,8 +107,8 @@ static void nativePointArray(CLUSTER * arrayPtr, VALUE rubyArray, long num_point
   }
 }
 
-static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * point_array, int num_points, long * cluster_size) {
-  int max_grid = getMaxGrid(resolution, &point_array[0], num_points);
+static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER * point_array, int num_points, long * cluster_size) {
+  int max_grid = fc_get_max_grid(resolution, &point_array[0], num_points);
   int i, j;
 
   CLUSTER * cluster;
@@ -164,7 +170,7 @@ static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * po
     }
 
     if(nearest_other > 0) {
-      combineClusters(&clusters[nearest_origin], &clusters[nearest_other]);
+      fc_combine_clusters(&clusters[nearest_origin], &clusters[nearest_other]);
 
       CLUSTER *newarr = malloc(preclust_size * sizeof(CLUSTER));
       memcpy(&newarr[0], &clusters[0], nearest_other * sizeof(CLUSTER));
@@ -185,14 +191,14 @@ static CLUSTER *calculateClusters(long separation, long resolution, CLUSTER * po
   return clusters;
 }
 
-static VALUE getClusterClass() {
+static VALUE fc_get_cluster_class() {
   ID cluster_module_id = rb_intern("Clusterer");
   ID cluster_class_id = rb_intern("Cluster");
   VALUE cluster_module = rb_const_get(rb_cObject, cluster_module_id);
   return rb_const_get(cluster_module, cluster_class_id);
 }
 
-static VALUE getClusters(VALUE self) {
+static VALUE fc_get_clusters(VALUE self) {
   // Get the separation adn resolution from ruby
   long separation = NUM2INT(rb_iv_get(self, "@separation"));
   long resolution = NUM2INT(rb_iv_get(self, "@resolution"));
@@ -203,16 +209,16 @@ static VALUE getClusters(VALUE self) {
   long num_points = RARRAY(pointArray)->len;
   CLUSTER native_point_array[num_points];
 
-  nativePointArray(&native_point_array[0], pointArray, num_points);
+  fc_native_point_array(&native_point_array[0], pointArray, num_points);
 
   // Calcualte the clusters
   CLUSTER * clusters = NULL;
   long cluster_size;
 
-  clusters = calculateClusters(separation, resolution, &native_point_array[0], num_points, &cluster_size);
+  clusters = fc_calculate_clusters(separation, resolution, &native_point_array[0], num_points, &cluster_size);
 
   // Create ruby array of clusters to return
-  VALUE cluster_class = getClusterClass();
+  VALUE cluster_class = fc_get_cluster_class();
   VALUE ruby_cluster_array = rb_ary_new2(cluster_size);
 
   for(i=0;i<cluster_size;i++) {
@@ -238,12 +244,13 @@ void Init_clusterer() {
   VALUE clustererClass = rb_define_class_under(clustererModule, "Base", rb_cObject);
 
   int arg_count = 2;
-  rb_define_method(clustererClass, "initialize", initializeClusterer, arg_count);
-
+  rb_define_method(clustererClass, "initialize", fc_initialize_clusterer, arg_count);
   rb_define_method(clustererClass, "add", fc_add_point, arg_count);
-  rb_define_method(clustererClass, "<<", fc_add_point, arg_count);
+
+  arg_count = 1;
+  rb_define_method(clustererClass, "<<", fc_append_point, arg_count);
 
   arg_count = 0;
-  rb_define_method(clustererClass, "clusters", getClusters, arg_count);
+  rb_define_method(clustererClass, "clusters", fc_get_clusters, arg_count);
   rb_define_method(clustererClass, "points", fc_get_points, arg_count);
 }
