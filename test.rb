@@ -63,7 +63,7 @@ clusterer = Fastcluster::Clusterer.new(105, 5, points)
 clusters = clusterer.clusters 
 
 clusters.sort{|a,b| a.size == b.size ? a.x <=> b.x : a.size <=> b.size }.each do |cluster|
-  puts '(%f, %f): %d' % [cluster.x, cluster.y, cluster.size]
+  puts cluster
 end
 
 }

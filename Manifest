@@ -10,3 +10,4 @@ spec/lib/fastcluster/clusterer_spec.rb
 spec/spec.opts
 spec/spec_helper.rb
 spec/test_data.rb
+test.rb

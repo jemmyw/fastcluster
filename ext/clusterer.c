@@ -18,12 +18,18 @@ typedef struct {
   long size;
 } CLUSTER;
 
+/*
+* An array of points to be clustered.
+*/
 static VALUE fc_get_points(VALUE self) {
   return rb_iv_get(self, "@points");
 }
 
 /*
-* Add a point to the array
+* call-seq:
+*   add(x, y) -> nil
+*
+* Add a point to this clusterer.
 */
 static VALUE fc_add_point(VALUE self, VALUE x, VALUE y) {
   long len = 2;
@@ -34,6 +40,16 @@ static VALUE fc_add_point(VALUE self, VALUE x, VALUE y) {
   return Qnil;
 }
 
+/*
+ * call-seq:
+ *   <<(point) -> nil
+ *
+ * Add a point to this clusterer. The point must be in the format
+ * of an array with two number.
+ *
+ * Example:
+ *  clusterer << [1, 2]
+ */
 static VALUE fc_append_point(VALUE self, VALUE point) {
   VALUE pointArray = fc_get_points(self);
   rb_ary_push(pointArray, point);
@@ -86,8 +102,21 @@ static long fc_get_max_grid(long resolution, CLUSTER * point_array, long num_poi
 }
 
 /*
-* initialize function for clusterer class. This creates the instance variables
-* for separation, resolution and points.
+* call-seq:
+*   new(separation = 0, resolution = 0, points = nil)
+*
+* Create a new Clusterer. The new method accepts 3 optional arguments, separation,
+* resolution and points.
+*
+* <tt>separation</tt> - The distance between clusters. The higher this number, the
+* less clusters there will be. If this is 0 then no clustering will occur.
+*
+* <tt>resolution</tt> - If specified then the points are placed on a grid with each grid square
+* being this size. Points falling in the same grid square are automatically clustered.
+* This option should be specified clustering larger number of points to reduce processing time.
+*
+* <tt>points</tt> - An array of points. Each array item must be an array with
+* two numbers (x, y). Example: <code>[[1, 2], [3, 4]]</code>.
 */
 static VALUE fc_initialize_clusterer(int argc, VALUE *argv, VALUE self) {
   if(argc > 0)
@@ -233,6 +262,14 @@ static VALUE fc_get_cluster_class() {
   return rb_const_get(cluster_module, cluster_class_id);
 }
 
+/*
+* Return the clusters found for the points in this clusterer. This will be an
+* array of Cluster objects.
+*
+* Example:
+*   clusterer = Fastcluster::Clusterer.new(3, 0, [[1, 1], [1, 2], [5, 9]])
+*   clusterer.clusters -> (
+*/
 static VALUE fc_get_clusters(VALUE self) {
   // Get the separation adn resolution from ruby
   long separation = NUM2INT(rb_iv_get(self, "@separation"));

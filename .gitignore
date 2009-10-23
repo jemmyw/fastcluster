@@ -4,3 +4,6 @@ ref
 *.bundle
 .idea
 Makefile
+pkg
+doc
+*.gemspec

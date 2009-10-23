@@ -19,7 +19,7 @@ module Fastcluster
     end
 
     def to_s
-      '(%f, %f): %d' % [@x, @y, @size]
+      '(%0.2f, %0.2f): %d' % [@x, @y, @size]
     end
   end
 end
