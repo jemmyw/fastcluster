@@ -49,6 +49,10 @@ describe Fastcluster::Clusterer do
         @clusters.inject(0){|m, n| m + n.size }.should == @points.size
       end
 
+      it 'should have 23 clusters' do
+        @clusters.size.should == 23
+      end
+
       it 'should have a cluster of 108 points at 836 by 178' do
         @clusters.last.size.should == 108
         @clusters.last.x.should be_close(836, 1)
