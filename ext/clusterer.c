@@ -201,7 +201,7 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
 }
 
 static VALUE fc_get_cluster_class() {
-  ID cluster_module_id = rb_intern("Clusterer");
+  ID cluster_module_id = rb_intern("Fastcluster");
   ID cluster_class_id = rb_intern("Cluster");
   VALUE cluster_module = rb_const_get(rb_cObject, cluster_module_id);
   return rb_const_get(cluster_module, cluster_class_id);
@@ -249,8 +249,8 @@ static VALUE fc_get_clusters(VALUE self) {
 }
 
 void Init_clusterer() {
-  VALUE clustererModule = rb_define_module("Clusterer");
-  VALUE clustererClass = rb_define_class_under(clustererModule, "Base", rb_cObject);
+  VALUE clustererModule = rb_define_module("Fastcluster");
+  VALUE clustererClass = rb_define_class_under(clustererModule, "Clusterer", rb_cObject);
 
   int arg_count = 2;
   rb_define_method(clustererClass, "initialize", fc_initialize_clusterer, arg_count);

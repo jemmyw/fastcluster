@@ -1,4 +1,4 @@
-module Clusterer
+module Fastcluster
   class Cluster
     attr_reader :x, :y, :size
 

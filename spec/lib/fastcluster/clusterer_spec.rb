@@ -1,9 +1,9 @@
-require File.dirname(__FILE__) + '/../spec_helper'
+require File.dirname(__FILE__) + '/../../spec_helper'
 require 'benchmark'
 
-describe Clusterer do
+describe Fastcluster::Clusterer do
   before do
-    @clusterer = Clusterer::Base.new(105, 5)
+    @clusterer = Fastcluster::Clusterer.new(105, 5)
     @points = POINTS
   end
 

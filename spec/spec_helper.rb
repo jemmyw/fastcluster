@@ -6,6 +6,5 @@ rescue LoadError
   require 'spec'
 end
 
-require File.dirname(__FILE__) + '/../clusterer'
-require File.dirname(__FILE__) + '/../cluster'
+require File.dirname(__FILE__) + '/../lib/fastcluster'
 require File.dirname(__FILE__) + '/test_data.rb'
