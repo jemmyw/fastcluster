@@ -1,13 +1,12 @@
 CHANGELOG
-Manifest.txt
+Manifest
 Rakefile
 ext/clusterer.c
 ext/extconf.rb
 lib/fastcluster.rb
 lib/fastcluster/cluster.rb
-spec/lib/clusterer_spec.rb
+spec/lib/fastcluster/cluster_spec.rb
+spec/lib/fastcluster/clusterer_spec.rb
 spec/spec.opts
 spec/spec_helper.rb
 spec/test_data.rb
-test.rb
-Manifest
