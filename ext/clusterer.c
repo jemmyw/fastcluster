@@ -89,12 +89,25 @@ static long fc_get_max_grid(long resolution, CLUSTER * point_array, long num_poi
 * initialize function for clusterer class. This creates the instance variables
 * for separation, resolution and points.
 */
-static VALUE fc_initialize_clusterer(VALUE self, VALUE separation, VALUE resolution) {
-  rb_iv_set(self, "@separation", separation);
-  rb_iv_set(self, "@resolution", resolution);
+static VALUE fc_initialize_clusterer(int argc, VALUE *argv, VALUE self) {
+  if(argc > 0)
+    rb_iv_set(self, "@separation", argv[0]);
+  else
+    rb_iv_set(self, "@separation", INT2FIX(0));
+
+  if(argc > 1)
+    rb_iv_set(self, "@resolution", argv[1]);
+  else
+    rb_iv_set(self, "@resolution", INT2FIX(0));
 
   VALUE pointArray = rb_ary_new();
   rb_iv_set(self, "@points", pointArray);
+
+  if(argc > 2) {
+    if(TYPE(argv[2]) == T_ARRAY) {
+      rb_iv_set(self, "@points", argv[2]);
+    }
+  }
 
   return Qnil;
 }
@@ -119,40 +132,47 @@ static void fc_native_point_array(CLUSTER * arrayPtr, VALUE rubyArray, long num_
 static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER * point_array, int num_points, long * cluster_size) {
   int max_grid = fc_get_max_grid(resolution, &point_array[0], num_points);
   int i, j;
-
-  CLUSTER * cluster;
-
-  CLUSTER grid_array[max_grid][max_grid];
   long preclust_size = 0;
 
-  for(i=0;i<max_grid;i++) {
-    for(j=0;j<max_grid;j++) {
-      grid_array[i][j].size = 0;
+  CLUSTER * cluster;
+  CLUSTER * clusters;
+
+  if(resolution > 0) {
+    CLUSTER grid_array[max_grid][max_grid];
+
+    for(i=0;i<max_grid;i++) {
+      for(j=0;j<max_grid;j++) {
+        grid_array[i][j].size = 0;
+      }
     }
-  }
 
-  for(i = 0; i < num_points; i++) {
-    cluster = &point_array[i];
+    for(i = 0; i < num_points; i++) {
+      cluster = &point_array[i];
 
-    int gx = floor(cluster->x/resolution);
-    int gy = floor(cluster->y/resolution);
+      int gx = floor(cluster->x/resolution);
+      int gy = floor(cluster->y/resolution);
 
-    fc_add_to_cluster(&grid_array[gx][gy], cluster->x, cluster->y);
+      fc_add_to_cluster(&grid_array[gx][gy], cluster->x, cluster->y);
 
-    if(grid_array[gx][gy].size == 1) preclust_size++;
-  }
-
-  CLUSTER *clusters = malloc(preclust_size * sizeof(CLUSTER));
-
-  int max_grid_total = max_grid * max_grid;
-  CLUSTER * gridPtr = grid_array[0];
-
-  int incr = 0;
-  for(i=0;i<max_grid_total;i++) {
-    if(gridPtr[i].size > 0) {
-      clusters[incr] = gridPtr[i];
-      incr++;
+      if(grid_array[gx][gy].size == 1) preclust_size++;
     }
+
+    clusters = malloc(preclust_size * sizeof(CLUSTER));
+
+    int max_grid_total = max_grid * max_grid;
+    CLUSTER * gridPtr = grid_array[0];
+
+    int incr = 0;
+    for(i=0;i<max_grid_total;i++) {
+      if(gridPtr[i].size > 0) {
+        clusters[incr] = gridPtr[i];
+        incr++;
+      }
+    }
+  } else {
+    preclust_size = num_points;
+    clusters = malloc(preclust_size * sizeof(CLUSTER));
+    memcpy(&clusters[0], &point_array[0], preclust_size * sizeof(CLUSTER));
   }
 
   double distance_sep = 0;
@@ -170,10 +190,15 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
       for(j=i+1;j<preclust_size;j++){
         double distance = fc_get_distance_between(&clusters[i], &clusters[j]);
 
+//        printf("distance between %f, %f and %f, %f is %f\n", clusters[i].x, clusters[i].y, clusters[j].x, clusters[j].y, distance);
+
         if(distance_sep == 0 || distance < distance_sep) {
           distance_sep = distance;
+
+          if(distance < separation || separation == 0) {
           nearest_origin = i;
           nearest_other = j;
+          }
         }
       }
     }
@@ -194,7 +219,8 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
 
       free(newarr);
     }
-  } while(distance_sep <= separation && preclust_size > 1);
+
+  } while((separation == 0 || distance_sep < separation) && preclust_size > 1);
 
   *cluster_size = preclust_size;
   return clusters;
@@ -252,14 +278,11 @@ void Init_clusterer() {
   VALUE clustererModule = rb_define_module("Fastcluster");
   VALUE clustererClass = rb_define_class_under(clustererModule, "Clusterer", rb_cObject);
 
-  int arg_count = 2;
-  rb_define_method(clustererClass, "initialize", fc_initialize_clusterer, arg_count);
-  rb_define_method(clustererClass, "add", fc_add_point, arg_count);
+  rb_define_method(clustererClass, "initialize", fc_initialize_clusterer, -1);
+  rb_define_method(clustererClass, "add", fc_add_point, 2);
 
-  arg_count = 1;
-  rb_define_method(clustererClass, "<<", fc_append_point, arg_count);
+  rb_define_method(clustererClass, "<<", fc_append_point, 1);
 
-  arg_count = 0;
-  rb_define_method(clustererClass, "clusters", fc_get_clusters, arg_count);
-  rb_define_method(clustererClass, "points", fc_get_points, arg_count);
+  rb_define_method(clustererClass, "clusters", fc_get_clusters, 0);
+  rb_define_method(clustererClass, "points", fc_get_points, 0);
 }
