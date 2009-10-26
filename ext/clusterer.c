@@ -158,14 +158,30 @@ static void fc_native_point_array(CLUSTER * arrayPtr, VALUE rubyArray, long num_
   }
 }
 
+/*
+* This function does the actual clustering. It takes the following params:
+*
+* <tt>separation</tt> - The minimum distance between clusters. At 0 there will be one cluster with all the points.
+* <tt>resolution</tt> - Any points that fall within resolution distance will be clustered automatically.
+* <tt>point_array</tt> - Array of points to cluster.
+* <tt>num_points</tt> - Size of the point array.
+* <tt>cluster_size</tt> - Pointer for a variable to receive the size of the returned array.
+*
+* This function return an array of CLUSTER.
+*/
 static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER * point_array, int num_points, long * cluster_size) {
-  int max_grid = fc_get_max_grid(resolution, &point_array[0], num_points);
   int i, j;
   long preclust_size = 0;
 
   CLUSTER * cluster;
   CLUSTER * clusters;
 
+  // This first section does preclustering. The points are split into a grid where each
+  // grid box is of the size resolutionxresolution. When more than one point falls
+  // in a grid box they are clustered.
+  int max_grid = fc_get_max_grid(resolution, &point_array[0], num_points);
+
+  // Only precluster if a resolution is specified
   if(resolution > 0) {
     CLUSTER grid_array[max_grid][max_grid];
 
@@ -175,6 +191,7 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
       }
     }
 
+    // Add clusters to grid
     for(i = 0; i < num_points; i++) {
       cluster = &point_array[i];
 
@@ -183,9 +200,12 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
 
       fc_add_to_cluster(&grid_array[gx][gy], cluster->x, cluster->y);
 
+      // If the grid array is holding a cluster of size 1 at this point
+      // then its a new cluster, so the preclust_size is incremented.
       if(grid_array[gx][gy].size == 1) preclust_size++;
     }
 
+    // Now the grid clusters are copied into an array
     clusters = malloc(preclust_size * sizeof(CLUSTER));
 
     int max_grid_total = max_grid * max_grid;
@@ -199,6 +219,7 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
       }
     }
   } else {
+    // As there is no grid just copy the original point array into a new array
     preclust_size = num_points;
     clusters = malloc(preclust_size * sizeof(CLUSTER));
     memcpy(&clusters[0], &point_array[0], preclust_size * sizeof(CLUSTER));
@@ -211,15 +232,12 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
   long nearest_other;
 
   do {
-    // calculate distance sep
     distance_sep = 0;
     nearest_other = 0;
 
     for(i=0;i<preclust_size;i++){
       for(j=i+1;j<preclust_size;j++){
         double distance = fc_get_distance_between(&clusters[i], &clusters[j]);
-
-//        printf("distance between %f, %f and %f, %f is %f\n", clusters[i].x, clusters[i].y, clusters[j].x, clusters[j].y, distance);
 
         if(distance_sep == 0 || distance < distance_sep) {
           distance_sep = distance;
@@ -232,9 +250,13 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
       }
     }
 
+    // If two clusters have been identified for merging, this part merges
+    // them into the first cluster and removes the second cluster from the array
     if(nearest_other > 0) {
+      // merge into first cluster
       fc_combine_clusters(&clusters[nearest_origin], &clusters[nearest_other]);
 
+      // remove second cluster by creating temporary array without it
       CLUSTER *newarr = malloc(preclust_size * sizeof(CLUSTER));
       memcpy(&newarr[0], &clusters[0], nearest_other * sizeof(CLUSTER));
       memcpy(&newarr[nearest_other], &clusters[nearest_other+1], (preclust_size - (nearest_other + 1)) * sizeof(CLUSTER));
@@ -243,18 +265,22 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
       clusters = (CLUSTER*)_tmp;
       preclust_size = preclust_size - 1;
 
-      for(i=0;i<preclust_size;i++)
-        clusters[i] = newarr[i];
+      // and copying it back
+      memcpy(&clusters[0], &newarr[0], preclust_size * sizeof(CLUSTER));
 
       free(newarr);
     }
-
+  // keep looping until either everything is in one cluster, or all clusters are
+  // outside the separation distance.
   } while((separation == 0 || distance_sep < separation) && preclust_size > 1);
 
   *cluster_size = preclust_size;
   return clusters;
 }
 
+/*
+* Get the ruby class Cluster
+*/
 static VALUE fc_get_cluster_class() {
   ID cluster_module_id = rb_intern("Fastcluster");
   ID cluster_class_id = rb_intern("Cluster");
