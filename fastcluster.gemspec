@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = "fastcluster"
-  s.version = "1.0"
+  s.version = "1.0.1"
   s.platform = Gem::Platform::RUBY
   s.summary = "A clustering library for 2 dimensional points"
   s.description = "A clustering library for 2 dimensional points"
