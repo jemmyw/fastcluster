@@ -2,8 +2,7 @@ ref
 *.so
 *.o
 *.bundle
-.idea
+*.gem
 Makefile
-pkg
 doc
 .bundle

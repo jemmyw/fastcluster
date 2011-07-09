@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../../spec_helper'
+require 'spec_helper'
 require 'benchmark'
 
 describe Fastcluster::Clusterer do
@@ -117,7 +117,7 @@ describe Fastcluster::Clusterer do
 
       describe "and separation 1" do
         before do
-          require 'lib/fastcluster'
+          require 'fastcluster'
           @clusterer = Fastcluster::Clusterer.new(1, 0, @points)
         end
 
