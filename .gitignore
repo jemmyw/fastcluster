@@ -6,4 +6,4 @@ ref
 Makefile
 pkg
 doc
-*.gemspec
+.bundle
