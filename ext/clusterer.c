@@ -3,6 +3,18 @@
 #include <stdlib.h>
 #include <math.h>
 
+#ifndef RUBY_19
+#ifndef RFLOAT_VALUE
+#define RFLOAT_VALUE(v) (RFLOAT(v)->value)
+#endif
+#ifndef RARRAY_LEN
+#define RARRAY_LEN(v) (RARRAY(v)->len)
+#endif
+#ifndef RARRAY_PTR
+#define RARRAY_PTR(v) (RARRAY(v)->ptr)
+#endif
+#endif
+
 /*
 *
 * Algorithm:
@@ -88,11 +100,11 @@ static void fc_combine_clusters(CLUSTER * dst, CLUSTER * src) {
 */
 static long fc_get_max_grid(long resolution, CLUSTER * point_array, long num_points) {
   int i;
-  int max_grid = 0;
+  long max_grid = 0;
   for(i = 0; i < num_points; i++) {
     CLUSTER * point = &point_array[i];
-    int xg = point->x/resolution;
-    int yg = point->y/resolution;
+    long xg = point->x/resolution;
+    long yg = point->y/resolution;
     if(xg>max_grid)
       max_grid = xg;
     if(yg>max_grid)
@@ -148,9 +160,9 @@ static VALUE fc_initialize_clusterer(int argc, VALUE *argv, VALUE self) {
 static void fc_native_point_array(CLUSTER * arrayPtr, VALUE rubyArray, long num_points) {
   int i;
   for(i=0;i<num_points;i++) {
-    VALUE holdArray = RARRAY(rubyArray)->ptr[i];
-    double x = NUM2DBL(RARRAY(holdArray)->ptr[0]);
-    double y = NUM2DBL(RARRAY(holdArray)->ptr[1]);
+    VALUE holdArray = RARRAY_PTR(rubyArray)[i];
+    double x = NUM2DBL(RARRAY_PTR(holdArray)[0]);
+    double y = NUM2DBL(RARRAY_PTR(holdArray)[1]);
 
     arrayPtr[i].x = x;
     arrayPtr[i].y = y;
@@ -169,7 +181,7 @@ static void fc_native_point_array(CLUSTER * arrayPtr, VALUE rubyArray, long num_
 *
 * This function return an array of CLUSTER.
 */
-static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER * point_array, int num_points, long * cluster_size) {
+static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER * point_array, long num_points, long * cluster_size) {
   int i, j;
   long preclust_size = 0;
 
@@ -179,7 +191,7 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
   // This first section does preclustering. The points are split into a grid where each
   // grid box is of the size resolutionxresolution. When more than one point falls
   // in a grid box they are clustered.
-  int max_grid = fc_get_max_grid(resolution, &point_array[0], num_points);
+  long max_grid = fc_get_max_grid(resolution, &point_array[0], num_points);
 
   // Only precluster if a resolution is specified
   if(resolution > 0) {
@@ -195,8 +207,8 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
     for(i = 0; i < num_points; i++) {
       cluster = &point_array[i];
 
-      int gx = floor(cluster->x/resolution);
-      int gy = floor(cluster->y/resolution);
+      long gx = floor(cluster->x/resolution);
+      long gy = floor(cluster->y/resolution);
 
       fc_add_to_cluster(&grid_array[gx][gy], cluster->x, cluster->y);
 
@@ -208,7 +220,7 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
     // Now the grid clusters are copied into an array
     clusters = malloc(preclust_size * sizeof(CLUSTER));
 
-    int max_grid_total = max_grid * max_grid;
+    long max_grid_total = max_grid * max_grid;
     CLUSTER * gridPtr = grid_array[0];
 
     int incr = 0;
@@ -228,7 +240,7 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
   double distance_sep = 0;
   long current_cluster_size = 0;
   int found;
-  long nearest_origin;
+  long nearest_origin = 0;
   long nearest_other;
 
   do {
@@ -304,7 +316,7 @@ static VALUE fc_get_clusters(VALUE self) {
 
   // Create a native array of clusters from the ruby array of points
   VALUE pointArray = fc_get_points(self);
-  long num_points = RARRAY(pointArray)->len;
+  long num_points = RARRAY_LEN(pointArray);
   CLUSTER native_point_array[num_points];
 
   fc_native_point_array(&native_point_array[0], pointArray, num_points);
