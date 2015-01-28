@@ -25,8 +25,8 @@
 *     between the clusters.
 **/
 typedef struct {
-  double x;
-  double y;
+  float x;
+  float y;
   long size;
 } CLUSTER;
 
@@ -71,8 +71,8 @@ static VALUE fc_append_point(VALUE self, VALUE point) {
 /*
 * Calculate the distance (pythag) between two cluster points
 */
-static double fc_get_distance_between(CLUSTER * one, CLUSTER * two) {
-  double rr = pow((long)one->x - (long)two->x, 2) + pow((long)one->y - (long)two->y, 2);
+static float fc_get_distance_between(CLUSTER * one, CLUSTER * two) {
+  float rr = pow((long)one->x - (long)two->x, 2) + pow((long)one->y - (long)two->y, 2);
   return sqrt(rr);
 }
 
@@ -80,7 +80,7 @@ static double fc_get_distance_between(CLUSTER * one, CLUSTER * two) {
 * Add a point to a cluster. This increments the size and calcualtes the average between
 * the current cluster position and the new point.
 */
-static void fc_add_to_cluster(CLUSTER * dst, double x, double y) {
+static void fc_add_to_cluster(CLUSTER * dst, float x, float y) {
   dst->x = ((dst->x * dst->size) + x) / (dst->size + 1);
   dst->y = ((dst->y * dst->size) + y) / (dst->size + 1);
   dst->size++;
@@ -161,8 +161,8 @@ static void fc_native_point_array(CLUSTER * arrayPtr, VALUE rubyArray, long num_
   int i;
   for(i=0;i<num_points;i++) {
     VALUE holdArray = RARRAY_PTR(rubyArray)[i];
-    double x = NUM2DBL(RARRAY_PTR(holdArray)[0]);
-    double y = NUM2DBL(RARRAY_PTR(holdArray)[1]);
+    float x = NUM2DBL(RARRAY_PTR(holdArray)[0]);
+    float y = NUM2DBL(RARRAY_PTR(holdArray)[1]);
 
     arrayPtr[i].x = x;
     arrayPtr[i].y = y;
@@ -237,7 +237,7 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
     memcpy(&clusters[0], &point_array[0], preclust_size * sizeof(CLUSTER));
   }
 
-  double distance_sep = 0;
+  float distance_sep = 0;
   long current_cluster_size = 0;
   int found;
   long nearest_origin = 0;
@@ -249,7 +249,7 @@ static CLUSTER *fc_calculate_clusters(long separation, long resolution, CLUSTER 
 
     for(i=0;i<preclust_size;i++){
       for(j=i+1;j<preclust_size;j++){
-        double distance = fc_get_distance_between(&clusters[i], &clusters[j]);
+        float distance = fc_get_distance_between(&clusters[i], &clusters[j]);
 
         if(distance_sep == 0 || distance < distance_sep) {
           distance_sep = distance;
